@@ -120,7 +120,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
   async waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    options?: WaitUntilGridVisibleOptions
+    options?: WaitUntilGridVisibleOptions,
+    isRetry?: boolean
   ) {
     const { isEmptyDataset, searchParams, withGrid } = options ?? {
       isEmptyDataset: false,
@@ -129,8 +130,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     const forceDatasetFromSelector = async () => {
-      await page.goto("/");
-      await page.getByTestId("selector-Select dataset").click();
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await page.getByTestId("selector-dataset").click();
 
       if (datasetName) {
         await page.getByTestId(`selector-result-${datasetName}`).click();
@@ -164,12 +165,22 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    await page.waitForSelector(
-      `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
-      {
-        state: "visible",
+    try {
+      await page.waitForSelector(
+        `[data-cy=${
+          withGrid ? "spotlight-section-forward" : "panel-container"
+        }]`,
+        {
+          state: "visible",
+        }
+      );
+    } catch (e) {
+      if (isRetry) {
+        throw e;
+      } else {
+        await this.waitUntilGridVisible(page, datasetName, options, true);
       }
-    );
+    }
 
     if (isEmptyDataset) {
       return;
