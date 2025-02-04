@@ -44,6 +44,7 @@ class DelegatedOperationRepo(object):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -116,6 +117,14 @@ class DelegatedOperationRepo(object):
     ) -> DelegatedOperationDocument:
         """Sets the label for the delegated operation."""
         raise NotImplementedError("subclass must implement set_label()")
+
+    def set_log_upload_error(
+        self, _id: ObjectId, log_upload_error: str
+    ) -> DelegatedOperationDocument:
+        """Sets the log upload error for the delegated operation."""
+        raise NotImplementedError(
+            "subclass must implement set_log_upload_error()"
+        )
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
@@ -245,6 +254,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -314,6 +324,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link
+
+        if log_path is not None:
+            update["$set"]["log_path"] = log_path
 
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
