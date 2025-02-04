@@ -67,7 +67,7 @@ function useLooker<L extends fos.Lookers>({
     !initialRef.current && looker.updateOptions(lookerOptions);
   }, [looker, lookerOptions]);
 
-  const shouldRefresh = useShouldReloadSampleOnActiveFieldsChange({
+  const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
     modal: true,
   });
 
@@ -76,8 +76,10 @@ function useLooker<L extends fos.Lookers>({
       return;
     }
 
-    if (shouldRefresh(id)) {
-      looker?.refreshSample();
+    const newFieldsIfAny = getNewFields(id);
+
+    if (newFieldsIfAny) {
+      looker?.refreshSample(newFieldsIfAny);
     }
   }, [id, lookerOptions.activePaths, looker]);
 
