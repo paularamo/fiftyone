@@ -36,17 +36,14 @@ const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
   "dummy-color-by-instance"
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
+test.describe("color scheme basic functionality with quickstart", () => {
+  test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+    await foWebServer.startWebServer();
+    await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
+      max_samples: 5,
+    });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
-    max_samples: 5,
-  });
-
-  await fiftyoneLoader.executePythonCode(`
+    await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
       import random
       quickstart_color_by_field = fo.load_dataset("${quickstartColorByField}")      
@@ -73,66 +70,70 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
       dummy_color_by_instance.app_config.color_scheme = fo.ColorScheme(color_by="instance", color_pool=["red", "green", "blue", "yellow", "purple", "orange", "brown", "pink", "gray", "black", "white"])
       dummy_color_by_instance.save()
     `);
-});
-
-test.describe.serial("color scheme basic functionality with quickstart", () => {
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, quickstartColorByField);
   });
 
-  test("update color by value mode, use tag as colorByAttribute", async ({
-    fiftyoneLoader,
-    gridActionsRow,
-    colorModal,
-    page,
-    grid,
-    eventUtils,
-    sidebar,
-  }) => {
-    // turn on the sample tag bubble
-    await sidebar.clickFieldCheckbox("tags");
-    // mount eventListener
-    const gridRefreshedEventPromise =
-      eventUtils.getEventReceivedPromiseForPredicate(
-        "re-render-tag",
-        () => true
-      );
-    // open color modal and modify color in sample tags field and ground_truth
-    await gridActionsRow.toggleColorSettings();
+  test.describe.serial(
+    "color scheme basic functionality with quickstart",
+    () => {
+      test.beforeEach(async ({ page, fiftyoneLoader }) => {
+        await fiftyoneLoader.waitUntilGridVisible(page, quickstartColorByField);
+      });
 
-    await colorModal.selectActiveField("sample tags");
-    await colorModal.changeColorMode("value");
+      test("update color by value mode, use tag as colorByAttribute", async ({
+        fiftyoneLoader,
+        gridActionsRow,
+        colorModal,
+        page,
+        grid,
+        eventUtils,
+        sidebar,
+      }) => {
+        // turn on the sample tag bubble
+        await sidebar.clickFieldCheckbox("tags");
+        // mount eventListener
+        const gridRefreshedEventPromise =
+          eventUtils.getEventReceivedPromiseForPredicate(
+            "re-render-tag",
+            () => true
+          );
+        // open color modal and modify color in sample tags field and ground_truth
+        await gridActionsRow.toggleColorSettings();
 
-    await page
-      .getByTitle(`Use custom colors for specific field values`)
-      .first()
-      .click({ force: true });
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+        await colorModal.selectActiveField("sample tags");
+        await colorModal.changeColorMode("value");
 
-    await colorModal.closeColorModal();
-    const tagBubble = page.getByTestId("tag-validation").first();
+        await page
+          .getByTitle(`Use custom colors for specific field values`)
+          .first()
+          .click({ force: true });
+        await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+        await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+        await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
 
-    await gridRefreshedEventPromise;
+        await colorModal.closeColorModal();
+        const tagBubble = page.getByTestId("tag-validation").first();
 
-    // verify validation tag has yellow green as background color
-    expect(await tagBubble.getAttribute("style")).toContain(
-      "rgb(154, 205, 50)"
-    );
+        await gridRefreshedEventPromise;
 
-    // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
-    // we're asserting that when dataset is switched, session color settings are reset to default from app config
-    const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
-    await fiftyoneLoader.selectDatasetFromSelector(
-      page,
-      dummyDatasetColorByInstance
-    );
-    await gridRefreshPromise;
+        // verify validation tag has yellow green as background color
+        expect(await tagBubble.getAttribute("style")).toContain(
+          "rgb(154, 205, 50)"
+        );
 
-    // open color modal
-    await gridActionsRow.toggleColorSettings();
-    await colorModal.assert.isColorByModeEqualTo("instance");
-    await colorModal.closeColorModal();
-  });
+        // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
+        // we're asserting that when dataset is switched, session color settings are reset to default from app config
+        const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
+        await fiftyoneLoader.selectDatasetFromSelector(
+          page,
+          dummyDatasetColorByInstance
+        );
+        await gridRefreshPromise;
+
+        // open color modal
+        await gridActionsRow.toggleColorSettings();
+        await colorModal.assert.isColorByModeEqualTo("instance");
+        await colorModal.closeColorModal();
+      });
+    }
+  );
 });

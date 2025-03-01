@@ -182,13 +182,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
-        if "dataset_id_1" not in index_names:
-            indices_to_create.append(
-                IndexModel(
-                    [("dataset_id", pymongo.ASCENDING)], name="dataset_id_1"
-                )
-            )
-
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
 
