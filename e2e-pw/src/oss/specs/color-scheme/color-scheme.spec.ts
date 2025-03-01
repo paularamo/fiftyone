@@ -36,11 +36,9 @@ const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
   "dummy-color-by-instance"
 );
 
-test.describe("color scheme basic functionality with quickstart", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
