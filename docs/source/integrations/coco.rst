@@ -637,3 +637,36 @@ to compute true positives, false positives, and false negatives:
     average precision (AP) by averaging the precision values over all 10 IoU
     thresholds. Then compute mAP by averaging the per-class AP values over all
     classes
+
+.. _coco-faq:
+
+COCO dataset FAQs
+________________________
+
+**What computer vision tasks involving the COCO dataset does FiftyOne support?**
+
+The built-in COCO-2014 and COCO-2017 Zoo datasets natively load object detection and instance segmentation labels into FiftyOne. For keypoint detection, panoptic segmentation, and image captioning, you can import the relevant JSON files with the helpers in `fiftyone.utils.coco`. Native Zoo loaders for these tasks are on the FiftyOne roadmap.
+
+**How does FiftyOne handle the size and complexity of the COCO dataset?**
+
+The `load_zoo_dataset()` method lets you pull exactly the subset you need - by split, class list, individual `image_ids`, `label_types`, or `max_samples` — so you avoid downloading the full ≈25 GB archive. When you request new samples, only the missing images are downloaded on-demand. Previously-cached files are reused.
+
+**What types of segmentation are available in COCO and how does FiftyOne support them?**
+
+COCO provides per-pixel instance segmentation masks and a separate panoptic track that merges “thing” and “stuff” categories. FiftyOne currently autoloads instance masks; panoptic and "stuff" segmentation can be ingested with a custom importer until native support is added. 
+
+**What kind of objects and annotations are included in COCO?**
+
+COCO depicts everyday scenes containing 80 in-use object classes (out of 91 defined), with bounding boxes, polygons for masks, person-keypoint skeletons, and natural-language captions. This diversity promotes models that generalize beyond narrow benchmarks.
+
+**How are object locations and features represented in COCO?**
+
+Each object is localized by an axis-aligned bounding box. Fine-grained details are captured by segmentation polygons or RLE masks, while person instances include 17 body keypoints.
+
+**What formats are used to store COCO annotations?**
+
+Annotations are stored in task-specific JSON files (e.g., `instances_train2017.json`, `captions_val2017.json`). Each file follows the same schema with images, annotations, and categories arrays, making it straightforward to mix or split annotation types when importing into FiftyOne.
+
+**Is COCO useful during different stages of a computer vision project?**
+
+Yes. The canonical *train/val/test* splits let teams iterate on training, hyper-parameter tuning, and final benchmarking under identical evaluation protocols.
