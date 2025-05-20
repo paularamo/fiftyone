@@ -270,6 +270,7 @@ class ConfigureScenario(foo.Operator):
                             "background": "var(--fo-palette-background-body)",
                             "color": "text.secondary",
                             "borderRadius": "4px",
+                            "textAlign": "center",
                         }
                     },
                     "label": {
@@ -341,6 +342,27 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
+        preview_toggle_container = inputs.h_stack(
+            "preview_toggle_container", align_x="right"
+        )
+        preview_toggle_container.bool(
+            "plot_preview_enabled",
+            view=types.SwitchView(label="Distribution preview"),
+            default=False,
+        )
+
+        plot_preview_enabled = ctx.params.get(
+            "preview_toggle_container", {}
+        ).get("plot_preview_enabled", False)
+
+        if not plot_preview_enabled:
+            return self.render_empty_sample_distribution(
+                inputs,
+                ctx.params,
+                description="Distribution preview is not enabled. Turn on distribution preview"
+                + " to visualize the subset breakdown.",
+            )
+
         plot_data, error = self.get_sample_distribution(
             ctx, subset_expressions
         )
@@ -376,7 +398,7 @@ class ConfigureScenario(foo.Operator):
             width="100%",
             layout={
                 "xaxis": {"title": {"text": x_axis_title}},
-                "yaxis": {"title": {"text": "Samople Instances"}},
+                "yaxis": {"title": {"text": "Label Instances"}},
             },
         )
 
