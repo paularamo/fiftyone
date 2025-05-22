@@ -6,6 +6,8 @@ Execution cache decorator.
 |
 """
 
+import time
+
 from fiftyone.operators.cache.utils import (
     _get_ctx_from_args,
     resolve_cache_info,
@@ -33,6 +35,13 @@ _RESIDENCY_OPTIONS = [
     "ephemeral",
     "hybrid",
 ]
+
+
+def time_ms():
+    """
+    Returns the current time in milliseconds.
+    """
+    return int(time.time() * 1000)
 
 
 def execution_cache(
@@ -178,6 +187,7 @@ def execution_cache(
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+            ec_st = time_ms()
             ctx, ctx_index = _get_ctx_from_args(args)
             cache_key, store, memory_cache, skip_cache = resolve_cache_info(
                 ctx,
@@ -195,11 +205,15 @@ def execution_cache(
                 max_size=max_size,
             )
             if skip_cache:
+                print(">>> EC: skip_cache", cache_key, "->", time_ms() - ec_st)
                 return func(*args, **kwargs)
 
             # Hybrid or Ephemeral
             if memory_cache is not None and cache_key in memory_cache:
                 cached_value = memory_cache[cache_key]
+                print(
+                    ">>> EC: memory cache", cache_key, "->", time_ms() - ec_st
+                )
                 return (
                     deserialize(cached_value)
                     if deserialize
@@ -226,6 +240,9 @@ def execution_cache(
                         else auto_serialize(result)
                     )
 
+                print(
+                    ">>> EC: store cache", cache_key, "->", time_ms() - ec_st
+                )
                 return result
 
             # Cache miss
@@ -240,6 +257,7 @@ def execution_cache(
             if memory_cache is not None:
                 memory_cache[cache_key] = value_to_cache
 
+            print(">>> EC: cache miss", cache_key, "->", time_ms() - ec_st)
             return result
 
         def uncached(*args, **kwargs):

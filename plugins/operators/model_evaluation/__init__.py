@@ -6,6 +6,8 @@ Scenario plugin.
 |
 """
 
+import time
+
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
@@ -27,6 +29,13 @@ from .utils import (
 from plugins.utils import get_subsets_from_custom_code
 
 STORE_NAME = "model_evaluation_panel_builtin"
+
+
+def time_ms():
+    """
+    Returns the current time in milliseconds.
+    """
+    return int(time.time() * 1000)
 
 
 class ConfigureScenario(foo.Operator):
@@ -159,6 +168,7 @@ class ConfigureScenario(foo.Operator):
     def get_subset_def_data_for_eval(
         self, ctx, _, eval_result, name, subset_def
     ):
+        print(">>> cache_miss ->", subset_def)
         x, y = [], []
         with eval_result.use_subset(subset_def):
             x.append(name)
@@ -167,18 +177,34 @@ class ConfigureScenario(foo.Operator):
 
     def get_sample_distribution(self, ctx, subset_expressions):
         try:
+            eek_st = time_ms()
             eval_key_a, eval_key_b = self.extract_evaluation_keys(ctx)
+            print(">>> extract_evaluation_keys ->", time_ms() - eek_st)
 
+            ler_st = time_ms()
             eval_result_a = ctx.dataset.load_evaluation_results(eval_key_a)
+            print(">>> load_evaluation_results ->", time_ms() - ler_st)
             if eval_key_b:
+                ler_compare_st = time_ms()
                 eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
+                print(
+                    ">>> load_evaluation_results_compare ->",
+                    time_ms() - ler_compare_st,
+                )
 
             plot_data = []
             x = []
             y = []
             for name, subset_def in subset_expressions.items():
+                gsd_st = time_ms()
                 more_x, more_y = self.get_subset_def_data_for_eval(
                     ctx, eval_key_a, eval_result_a, name, subset_def
+                )
+                print(
+                    ">>> get_subset_def_data",
+                    subset_def,
+                    "->",
+                    time_ms() - gsd_st,
                 )
                 x += more_x
                 y += more_y
@@ -342,6 +368,7 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
+        sdg_st = time_ms()
         preview_toggle_container = inputs.h_stack(
             "preview_toggle_container", align_x="right"
         )
@@ -401,6 +428,7 @@ class ConfigureScenario(foo.Operator):
                 "yaxis": {"title": {"text": "Label Instances"}},
             },
         )
+        print(">>> render_sample_distribution_graph ->", time_ms() - sdg_st)
 
     def get_custom_code_key(self, params):
         scenario_type = self.get_scenario_type(params)
@@ -983,16 +1011,33 @@ class ConfigureScenario(foo.Operator):
         return [scenario.get("name") for _, scenario in scenarios.items()]
 
     def resolve_input(self, ctx):
+        print("\n--- resolve_input start ---\n")
+        ri_st = time_ms()
+        cache_st = time_ms()
+        #
+        # Ensure the dataset singleton is cached so that subsequent callbacks on
+        # this panel will use the same `dataset` and hence `results`
+        #
+        import fiftyone.server.utils as fosu
+
+        fosu.cache_dataset(ctx.dataset)
+
+        print(">>> cache_dataset ->", time_ms() - cache_st)
+
         inputs = types.Object()
 
+        name_st = time_ms()
         self.render_name_input(ctx, inputs)
         inputs.str(
             "key",
             view=types.HiddenView(),
         )
+        print(">>> render_name_input ->", time_ms() - name_st)
 
+        type_st = time_ms()
         scenario_type = self.get_scenario_type(ctx.params)
         self.render_scenario_types(inputs, scenario_type)
+        print(">>> render_scenario_types ->", time_ms() - type_st)
 
         scenario_id = ctx.params.get("scenario_id", None)
         loaded_scenario_changes = ctx.params.get("panel_state", {}).get(
@@ -1016,6 +1061,7 @@ class ConfigureScenario(foo.Operator):
         selected_scenario_field = ctx.params.get("scenario_field", None)
         gt_field = ctx.params.get("gt_field", None)
 
+        subset_st = time_ms()
         if scenario_type == ScenarioType.CUSTOM_CODE:
             self.render_custom_code(ctx, inputs)
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
@@ -1034,11 +1080,14 @@ class ConfigureScenario(foo.Operator):
             self.render_saved_views(ctx, inputs)
         if scenario_type == ScenarioType.SAMPLE_FIELD:
             self.render_sample_fields(ctx, inputs, selected_scenario_field)
+        print(">>> render_scenario_picker_view ->", time_ms() - subset_st)
 
         prompt = types.PromptView(
             submit_button_label="Analyze scenario",
             label=self.get_modal_title(ctx),
         )
+        print(">>> resolve_input ->", time_ms() - ri_st)
+        print("\n--- resolve_input end ---\n")
         return types.Property(inputs, view=prompt)
 
     def render_custom_code_content(self, inputs, custom_code, code_key):
